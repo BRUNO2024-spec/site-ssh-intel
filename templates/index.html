@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSH INTEL | Premium Access</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Orbitron:wght@700&display=swap" rel="stylesheet">
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+
+    <nav>
+        <div class="nav-container">
+            <div class="logo">SSH INTEL</div>
+            <div class="nav-actions">
+                <button id="xrayLinksBtn" class="btn-ghost" style="width: auto; padding: 0.6rem 1.2rem; border: 1px solid var(--border); border-radius: 10px; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); cursor: pointer; transition: all 0.3s; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-link"></i>
+                    LINKS XRAY
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        {% if cards %}
+            <div class="cards-container">
+                {% for card in cards %}
+                <div class="server-card reveal" data-card-id="{{ card.id }}">
+                    <div class="flag-container">
+                        <img src="{{ card.flag }}" alt="Bandeira" class="server-flag">
+                    </div>
+                    
+                    <h2 class="server-name">{{ card.name }}</h2>
+
+                    <div class="status-indicator">
+                        <span class="dot {{ 'offline' if card.status == 'Offline' else '' }}"></span>
+                        <span class="server-status-text {{ 'offline' if card.status == 'Offline' else '' }}">{{ card.status }}</span>
+                        <span style="margin: 0 4px; color: var(--border);">•</span>
+                        <span class="online-users-count" style="color: var(--text-main);">{{ card.online_users }}</span> 
+                        <span style="color: var(--text-muted); font-size: 0.8rem; font-weight: 500;">onlines</span>
+                    </div>
+
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <h4>Portas</h4>
+                            <div class="badge-list">
+                                {% for port in card.ports %}
+                                <span class="badge">{{ port }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="info-item">
+                            <h4>Protocolos</h4>
+                            <div class="badge-list">
+                                {% for protocol in card.protocols %}
+                                <span class="badge">{{ protocol }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="btn-primary create-btn" 
+                            onclick="handleCreateClick('{{ card.id }}', {{ 'true' if card.google_ads_enabled else 'false' }})"
+                            {{ 'disabled' if card.status == 'Offline' else '' }}>
+                        <span class="btn-text">{{ 'INDISPONÍVEL' if card.status == 'Offline' else 'CRIAR ACESSO PREMIUM' }}</span>
+                        <div class="loader" style="display: none;"></div>
+                    </button>
+                    
+                    {% if card.google_ads_enabled %}
+                    <div id="ads-container-{{ card.id }}" style="display: none;">
+                        {{ card.google_ads_code | safe }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <!-- Fallback para card fixo se DB estiver vazio -->
+            <div class="server-card reveal">
+                <div class="flag-container">
+                    <img src="https://flagcdn.com/br.svg" alt="Brasil" class="server-flag">
+                </div>
+                <h2 class="server-name">Servidor BR</h2>
+                <div class="status-indicator">
+                    <span class="dot {{ 'offline' if status == 'Offline' else '' }}"></span>
+                    <span class="server-status-text {{ 'offline' if status == 'Offline' else '' }}">{{ status }}</span>
+                </div>
+                <button class="btn-primary" {{ 'disabled' if status == 'Offline' else '' }}>
+                    {{ 'INDISPONÍVEL' if status == 'Offline' else 'CRIAR ACESSO PREMIUM' }}
+                </button>
+            </div>
+        {% endif %}
+    </main>
+
+    <!-- Modal de Links XRAY -->
+    <div class="modal" id="xray-modal">
+        <div class="modal-content credential-modal reveal" style="max-width: 500px;">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <h2 style="font-family: var(--font-tech); font-size: 1.2rem; color: var(--primary); margin: 0;">
+                    <i class="fas fa-link"></i> LINKS XRAY
+                </h2>
+                <button id="closeXrayModal" style="background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.2rem; transition: color 0.2s;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="modal-body">
+                <div class="xray-uuid-section" style="margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border);">
+                    <label class="form-label">Digite seu UUID</label>
+                    <input type="text" id="user-xray-uuid" class="form-input" 
+                           placeholder="Ex: 123e4567-e89b-12d3-a456-426614174000">
+                    <p id="uuid-error" style="color: var(--danger); font-size: 0.7rem; margin-top: 0.5rem; display: none;">UUID inválido. Verifique o formato.</p>
+                </div>
+
+                <div id="xray-links-list" class="space-y-6">
+                    <!-- Links serão carregados via API -->
+                    <div class="text-center py-4 text-muted">Carregando links...</div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button id="btnFooterCloseXray" class="btn-secondary" style="margin-top: 0; width: 100%;">FECHAR</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Sucesso (Credenciais) -->
+    <div class="modal" id="success-modal">
+        <div class="modal-content credential-modal reveal">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <h2 style="text-align: center; color: var(--neon-blue); font-size: 1.4rem; flex: 1; margin: 0;">
+                    <i class="fas fa-shield-alt"></i> ACESSO GERADO
+                </h2>
+                <button id="closeSuccessModal" style="background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.2rem;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="modal-body">
+                <div class="credential-list">
+                    <div class="credential-item">
+                        <label class="form-label">IP do Servidor</label>
+                        <div class="copy-box">
+                            <span id="res-ip">0.0.0.0</span>
+                            <button onclick="copyToClipboard('res-ip')"><i class="far fa-copy"></i></button>
+                        </div>
+                    </div>
+                    <div class="credential-item">
+                        <label class="form-label">Usuário</label>
+                        <div class="copy-box">
+                            <span id="res-user">admin</span>
+                            <button onclick="copyToClipboard('res-user')"><i class="far fa-copy"></i></button>
+                        </div>
+                    </div>
+                    <div class="credential-item">
+                        <label class="form-label">Senha</label>
+                        <div class="copy-box">
+                            <span id="res-pass">****</span>
+                            <button onclick="copyToClipboard('res-pass')"><i class="far fa-copy"></i></button>
+                        </div>
+                    </div>
+                    <div class="credential-item" id="uuid-container">
+                        <label class="form-label">UUID XRAY</label>
+                        <div class="copy-box">
+                            <span id="res-uuid">00000000-0000-0000-0000-000000000000</span>
+                            <button onclick="copyToClipboard('res-uuid')"><i class="far fa-copy"></i></button>
+                        </div>
+                    </div>
+                    <div class="credential-item">
+                        <label class="form-label">Porta</label>
+                        <div class="copy-box">
+                            <span id="res-port">80, 8080</span>
+                            <button onclick="copyToClipboard('res-port')"><i class="far fa-copy"></i></button>
+                        </div>
+                    </div>
+                    <div class="credential-item">
+                        <label class="form-label">Expiração</label>
+                        <div class="copy-box">
+                            <span id="res-expiry">00/00/0000</span>
+                            <button onclick="copyToClipboard('res-expiry')"><i class="far fa-copy"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer flex flex-col gap-2">
+                <button class="btn-primary" style="padding: 0.9rem;" id="copy-all-btn">
+                    <i class="fas fa-copy"></i> COPIAR TUDO
+                </button>
+                <button class="btn-secondary" style="margin-top: 0;" onclick="closeSuccessModal()">FECHAR</button>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 SSH INTEL - Premium SSH Services</p>
+        <div class="footer-links">
+            <a href="/terms">Termos</a>
+            <a href="{{ support_link if support_link else '#' }}" target="_blank">Suporte</a>
+        </div>
+    </footer>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container"></div>
+
+    <!-- JS -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

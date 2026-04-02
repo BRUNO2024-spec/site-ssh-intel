@@ -1,0 +1,261 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Gerenciar Cards | SSH INTEL Admin{% endblock %}
+
+{% block content %}
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10 reveal">
+    <div>
+        <h1 class="text-3xl font-bold text-white mb-2">Servidores</h1>
+        <p class="text-gray-400">Adicione, edite ou remova os cards de servidores da página principal.</p>
+    </div>
+    <button class="btn-primary w-full sm:w-auto" onclick="openAddModal()">
+        <i class="fas fa-plus"></i>
+        <span>Novo Servidor</span>
+    </button>
+</div>
+
+<!-- Card Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 reveal" style="animation-delay: 0.1s;">
+    {% for card in cards %}
+    <div class="admin-card group flex flex-col h-full">
+        <!-- Card Header -->
+        <div class="flex items-start justify-between mb-6">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl overflow-hidden border border-white/10 shadow-lg">
+                    <img src="https://flagcdn.com/{{ card.flag_code }}.svg" class="w-full h-full object-cover" alt="Flag">
+                </div>
+                <div class="min-w-0">
+                    <h3 class="text-lg font-bold text-white truncate">{{ card.name }}</h3>
+                    <p class="text-sm text-neon-blue font-mono">{{ card.ip }}</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onclick='editCard({{ {
+                    "id": card.id,
+                    "name": card.name,
+                    "ip": card.ip,
+                    "flag_code": card.flag_code,
+                    "ports": card.ports,
+                    "protocols": card.protocols,
+                    "api_token": card.api_token,
+                    "api_url_create": card.api_url_create,
+                    "api_url_monitor": card.api_url_monitor,
+                    "api_url_stats": card.api_url_stats,
+                    "google_ads_enabled": card.google_ads_enabled,
+                    "google_ads_code": card.google_ads_code
+                }|tojson }})' class="p-2 text-gray-400 hover:text-white transition-colors" title="Editar">
+                    <i class="fas fa-pen-to-square"></i>
+                </button>
+                <button onclick="deleteCard({{ card.id }})" class="p-2 text-gray-400 hover:text-red-400 transition-colors" title="Excluir">
+                    <i class="fas fa-trash-can"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Info Grid -->
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <div class="p-3 bg-white/5 rounded-xl border border-white/5">
+                <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Portas</p>
+                <div class="flex flex-wrap gap-1">
+                    {% for port in card.ports.split(',') %}
+                    <span class="text-[11px] text-white font-semibold">{{ port.strip() }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="p-3 bg-white/5 rounded-xl border border-white/5">
+                <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Protocolos</p>
+                <div class="flex flex-wrap gap-1">
+                    {% for proto in card.protocols.split(',') %}
+                    <span class="text-[11px] text-white font-semibold">{{ proto.strip() }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Status & Ads -->
+        <div class="mt-auto pt-4 border-t border-white/5 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full {{ 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' if card.google_ads_enabled else 'bg-gray-600' }}"></span>
+                <span class="text-xs text-gray-400">Google Ads {{ 'Ativo' if card.google_ads_enabled else 'Desativo' }}</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <i class="fas fa-key text-xs text-gray-500"></i>
+                <span class="text-xs text-gray-400">{{ 'Token OK' if card.api_token else 'Sem Token' }}</span>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Refactored Modal -->
+<div id="cardModalOverlay" class="fixed inset-0 bg-black/80 backdrop-blur-md z-[2000] hidden items-center justify-center p-4">
+    <div class="modal-content max-w-2xl transform scale-95 opacity-0 transition-all duration-300" id="modalContainer">
+        <!-- Modal Header -->
+        <div class="modal-header flex items-center justify-between">
+            <h2 id="modal-title" class="text-2xl font-bold text-white flex items-center gap-3">
+                <i class="fas fa-server text-neon-blue"></i>
+                ADICIONAR SERVIDOR
+            </h2>
+            <button onclick="closeModal()" class="w-10 h-10 rounded-full hover:bg-white/5 flex items-center justify-center text-gray-400 hover:text-white transition-colors">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+
+        <!-- Modal Body -->
+        <div class="modal-body">
+            <form id="card-form" action="/card/save" method="POST" class="space-y-6">
+                <input type="hidden" name="id" id="card-id">
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-2">
+                        <label class="form-label">Nome de Exibição</label>
+                        <input type="text" name="name" id="card-name" class="form-input" placeholder="Ex: Premium Brasil" required>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="form-label">Endereço IP</label>
+                        <input type="text" name="ip" id="card-ip" class="form-input" placeholder="15.228.12.255" required>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="form-label">Código Bandeira (ISO)</label>
+                        <input type="text" name="flag_code" id="card-flag" class="form-input" placeholder="br, us, fr" required>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="form-label">Portas (Separe por vírgula)</label>
+                        <input type="text" name="ports" id="card-ports" class="form-input" placeholder="80, 8080, 443" required>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="form-label">Protocolos Suportados</label>
+                    <input type="text" name="protocols" id="card-protocols" class="form-input" placeholder="WS, WSS, XRAY, SSL" required>
+                </div>
+
+                <!-- API Settings Section -->
+                <div class="p-6 bg-white/[0.02] rounded-2xl border border-white/5 space-y-6">
+                    <h3 class="text-sm font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                        <i class="fas fa-link text-neon-blue"></i>
+                        Integração API
+                    </h3>
+                    
+                    <div class="space-y-2">
+                        <label class="form-label">Token de Autorização</label>
+                        <input type="text" name="api_token" id="card-api-token" class="form-input" placeholder="Token Bearer da API">
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-2">
+                            <label class="form-label">Endpoint de Criação</label>
+                            <input type="text" name="api_url_create" id="card-api-create" class="form-input" placeholder="http://ip:porta/v1">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="form-label">Endpoint de Monitoramento</label>
+                            <input type="text" name="api_url_monitor" id="card-api-monitor" class="form-input" placeholder="http://ip:porta/v1">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="form-label">Endpoint de Estatísticas</label>
+                            <input type="text" name="api_url_stats" id="card-api-stats" class="form-input" placeholder="http://ip:porta/v1">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ads Section -->
+                <div class="flex flex-col md:flex-row gap-6">
+                    <div class="flex-1 space-y-4">
+                        <div class="flex items-center justify-between p-4 bg-white/[0.02] rounded-2xl border border-white/5">
+                            <div class="flex items-center gap-3">
+                                <i class="fas fa-rectangle-ad text-yellow-500"></i>
+                                <div>
+                                    <p class="text-sm font-bold text-white">Google Adsense</p>
+                                    <p class="text-[10px] text-gray-500">Exigir anúncio para criar SSH</p>
+                                </div>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" name="google_ads_enabled" id="card-ads-enabled" class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-neon-blue"></div>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="flex-[2] space-y-2">
+                        <label class="form-label">Script do Anúncio (Opcional)</label>
+                        <textarea name="google_ads_code" id="card-ads-code" class="form-input h-20 resize-none text-xs" placeholder="Cole o código <script> aqui..."></textarea>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="modal-footer flex gap-4">
+            <button type="submit" form="card-form" class="btn-primary flex-1">
+                <i class="fas fa-check"></i>
+                Salvar Alterações
+            </button>
+            <button type="button" onclick="closeModal()" class="btn-secondary px-8">
+                Cancelar
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const cardOverlay = document.getElementById('cardModalOverlay');
+    const cardContainer = document.getElementById('modalContainer');
+    
+    function openAddModal() {
+        document.getElementById('modal-title').innerHTML = '<i class="fas fa-server text-neon-blue"></i> ADICIONAR SERVIDOR';
+        document.getElementById('card-id').value = '';
+        document.getElementById('card-form').reset();
+        showModal();
+    }
+
+    function showModal() {
+        cardOverlay.classList.replace('hidden', 'flex');
+        setTimeout(() => {
+            cardContainer.classList.replace('scale-95', 'scale-100');
+            cardContainer.classList.replace('opacity-0', 'opacity-100');
+        }, 10);
+    }
+
+    function closeModal() {
+        cardContainer.classList.replace('scale-100', 'scale-95');
+        cardContainer.classList.replace('opacity-100', 'opacity-0');
+        setTimeout(() => {
+            cardOverlay.classList.replace('flex', 'hidden');
+        }, 300);
+    }
+
+    function editCard(card) {
+        document.getElementById('modal-title').innerHTML = '<i class="fas fa-pen-to-square text-neon-blue"></i> EDITAR SERVIDOR';
+        document.getElementById('card-id').value = card.id;
+        document.getElementById('card-name').value = card.name;
+        document.getElementById('card-ip').value = card.ip;
+        document.getElementById('card-flag').value = card.flag_code;
+        document.getElementById('card-ports').value = card.ports;
+        document.getElementById('card-protocols').value = card.protocols;
+        document.getElementById('card-api-token').value = card.api_token || '';
+        document.getElementById('card-api-create').value = card.api_url_create || '';
+        document.getElementById('card-api-monitor').value = card.api_url_monitor || '';
+        document.getElementById('card-api-stats').value = card.api_url_stats || '';
+        document.getElementById('card-ads-enabled').checked = card.google_ads_enabled;
+        document.getElementById('card-ads-code').value = card.google_ads_code || '';
+        showModal();
+    }
+
+    async function deleteCard(id) {
+        if(confirm('Tem certeza que deseja excluir este servidor permanentemente?')) {
+            const resp = await fetch(`/card/delete/${id}`, { method: 'POST' });
+            if(resp.ok) window.location.reload();
+        }
+    }
+
+    // Close on click outside
+    cardOverlay.addEventListener('click', (e) => {
+        if(e.target === cardOverlay) closeModal();
+    });
+
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !cardOverlay.classList.contains('hidden')) closeModal();
+    });
+</script>
+{% endblock %}

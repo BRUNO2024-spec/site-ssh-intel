@@ -1,0 +1,104 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Configurações | SSH INTEL Admin{% endblock %}
+
+{% block content %}
+<div class="mb-10 reveal">
+    <h1 class="text-3xl font-bold text-white mb-2">Configurações</h1>
+    <p class="text-gray-400">Ajuste as preferências globais e a segurança do seu painel.</p>
+</div>
+
+{% if error %} 
+<div class="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400 flex items-center gap-3 reveal">
+    <i class="fas fa-circle-exclamation"></i>
+    <p class="text-sm font-medium">{{ error }}</p>
+</div> 
+{% endif %}
+
+{% if success %} 
+<div class="mb-6 p-4 bg-green-500/10 border border-green-500/20 rounded-2xl text-green-400 flex items-center gap-3 reveal">
+    <i class="fas fa-circle-check"></i>
+    <p class="text-sm font-medium">{{ success }}</p>
+</div> 
+{% endif %}
+
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
+    <!-- General Settings -->
+    <div class="admin-card reveal" style="animation-delay: 0.1s;">
+        <div class="flex items-center gap-3 mb-8">
+            <div class="w-10 h-10 bg-neon-blue/10 rounded-xl flex items-center justify-center text-neon-blue">
+                <i class="fas fa-globe"></i>
+            </div>
+            <h2 class="text-xl font-bold text-white">Preferências do Site</h2>
+        </div>
+
+        <form action="/config" method="POST" class="space-y-6">
+            <input type="hidden" name="action" value="general">
+            
+            <div class="space-y-2">
+                <label class="form-label">Canal de Suporte</label>
+                <div class="relative">
+                    <i class="fab fa-whatsapp absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"></i>
+                    <input type="text" name="support_link" class="form-input pl-11" value="{{ support_link }}" placeholder="https://wa.me/...">
+                </div>
+                <p class="text-[10px] text-gray-500">Link para o botão de suporte no rodapé.</p>
+            </div>
+            
+            <div class="space-y-2">
+                <label class="form-label">Termos de Uso</label>
+                <textarea name="terms_content" class="form-input h-64 resize-y font-mono text-sm" placeholder="Conteúdo HTML dos termos...">{{ terms_content }}</textarea>
+                <p class="text-[10px] text-gray-500">Aceita tags HTML para formatação personalizada.</p>
+            </div>
+            
+            <button type="submit" class="btn-primary w-full">
+                <i class="fas fa-save"></i>
+                Atualizar Preferências
+            </button>
+        </form>
+    </div>
+
+    <!-- Security Settings -->
+    <div class="admin-card reveal" style="animation-delay: 0.2s;">
+        <div class="flex items-center gap-3 mb-8">
+            <div class="w-10 h-10 bg-neon-purple/10 rounded-xl flex items-center justify-center text-neon-purple">
+                <i class="fas fa-user-shield"></i>
+            </div>
+            <h2 class="text-xl font-bold text-white">Segurança do Administrador</h2>
+        </div>
+
+        <form action="/config" method="POST" class="space-y-6">
+            <input type="hidden" name="action" value="security">
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div class="space-y-2">
+                    <label class="form-label">Usuário Atual</label>
+                    <input type="text" class="form-input opacity-50 cursor-not-allowed" value="{{ admin_username }}" readonly disabled>
+                </div>
+                <div class="space-y-2">
+                    <label class="form-label">Novo Usuário</label>
+                    <input type="text" name="new_username" class="form-input" placeholder="Opcional">
+                </div>
+            </div>
+
+            <div class="p-6 bg-white/[0.02] rounded-2xl border border-white/5 space-y-6">
+                <h3 class="text-xs font-bold text-gray-500 uppercase tracking-widest">Alterar Senha</h3>
+                
+                <div class="space-y-2">
+                    <label class="form-label">Nova Senha</label>
+                    <input type="password" name="new_password" class="form-input" placeholder="Mínimo 8 caracteres" minlength="8">
+                </div>
+
+                <div class="space-y-2">
+                    <label class="form-label text-neon-purple">Confirmar com Senha Atual</label>
+                    <input type="password" name="current_password" class="form-input border-neon-purple/30 focus:border-neon-purple" placeholder="Senha mestre atual" required>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-primary w-full !bg-gradient-to-r !from-neon-purple !to-purple-600">
+                <i class="fas fa-lock"></i>
+                Salvar Alterações de Segurança
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

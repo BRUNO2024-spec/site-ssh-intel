@@ -1,0 +1,8 @@
+flask
+flask-sqlalchemy
+flask-jwt-extended
+python-dotenv
+flask-migrate
+requests
+werkzeug
+gunicorn

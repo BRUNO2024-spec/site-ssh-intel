@@ -1,0 +1,170 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Gerenciar Links XRAY | SSH INTEL Admin{% endblock %}
+
+{% block content %}
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10 reveal">
+    <div>
+        <h1 class="text-3xl font-bold text-white mb-2">Links XRAY</h1>
+        <p class="text-gray-400">Gerencie os links de conexão XRAY exibidos para os usuários.</p>
+    </div>
+    <button class="btn-primary w-full sm:w-auto" onclick="openAddModal()">
+        <i class="fas fa-plus"></i>
+        <span>Novo Link XRAY</span>
+    </button>
+</div>
+
+<!-- Links Table/Grid -->
+<div class="grid grid-cols-1 gap-6 reveal" style="animation-delay: 0.1s;">
+    <div class="admin-card overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="border-b border-white/5">
+                    <th class="pb-4 text-xs font-bold text-gray-500 uppercase tracking-widest">Nome</th>
+                    <th class="pb-4 text-xs font-bold text-gray-500 uppercase tracking-widest">Link (Resumo)</th>
+                    <th class="pb-4 text-xs font-bold text-gray-500 uppercase tracking-widest text-center">Status</th>
+                    <th class="pb-4 text-xs font-bold text-gray-500 uppercase tracking-widest text-right">Ações</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-white/5">
+                {% for link in links %}
+                <tr class="group hover:bg-white/[0.02] transition-colors">
+                    <td class="py-4 font-bold text-white">{{ link.name }}</td>
+                    <td class="py-4 text-sm text-gray-400 font-mono">
+                        <span class="truncate max-w-[300px] inline-block">{{ link.link[:50] }}...</span>
+                    </td>
+                    <td class="py-4">
+                        <div class="flex justify-center">
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" class="sr-only peer" {% if link.is_active %}checked{% endif %} 
+                                       onchange="toggleLink({{ link.id }})">
+                                <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-neon-blue"></div>
+                            </label>
+                        </div>
+                    </td>
+                    <td class="py-4 text-right">
+                        <div class="flex justify-end gap-2">
+                            <button onclick='editLink({{ {"id": link.id, "name": link.name, "link": link.link, "is_active": link.is_active}|tojson }})' 
+                                    class="p-2 text-gray-400 hover:text-white transition-colors">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button onclick="deleteLink({{ link.id }})" class="p-2 text-gray-400 hover:text-red-400 transition-colors">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not links %}
+                <tr>
+                    <td colspan="4" class="py-10 text-center text-gray-500 italic">Nenhum link cadastrado ainda.</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal CRUD -->
+<div id="linkModalOverlay" class="fixed inset-0 bg-black/80 backdrop-blur-md z-[2000] hidden items-center justify-center p-4">
+    <div class="modal-content max-w-lg transform scale-95 opacity-0 transition-all duration-300" id="modalContainer">
+        <!-- Modal Header -->
+        <div class="modal-header flex items-center justify-between">
+            <h2 id="modal-title" class="text-2xl font-bold text-white flex items-center gap-3">
+                <i class="fas fa-link text-neon-blue"></i>
+                ADICIONAR LINK XRAY
+            </h2>
+            <button onclick="closeModal()" class="w-10 h-10 rounded-full hover:bg-white/5 flex items-center justify-center text-gray-400 hover:text-white transition-colors">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+
+        <!-- Modal Body -->
+        <div class="modal-body">
+            <form id="link-form" action="/admin/xray/save" method="POST" class="space-y-6">
+                <input type="hidden" name="id" id="link-id">
+                
+                <div class="space-y-2">
+                    <label class="form-label">Nome do Link</label>
+                    <input type="text" name="name" id="link-name" class="form-input" placeholder="Ex: AZION TIM" required>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="form-label">Link XRAY Completo</label>
+                    <textarea name="link" id="link-text" class="form-input h-32 resize-none text-xs font-mono" placeholder="Ex: vless://{uuid}@meuserver.com:443?path=/..." required></textarea>
+                    <p class="text-[10px] text-gray-500">Use o placeholder <code class="text-neon-blue">{uuid}</code> onde o UUID deve ser inserido.</p>
+                </div>
+
+                <div class="flex items-center gap-3 p-4 bg-white/[0.02] rounded-2xl border border-white/5">
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" name="is_active" id="link-active" class="sr-only peer" checked>
+                        <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-neon-blue"></div>
+                    </label>
+                    <span class="text-sm font-bold text-white">Ativar link imediatamente</span>
+                </div>
+            </form>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="modal-footer flex gap-4">
+            <button type="submit" form="link-form" class="btn-primary flex-1">Salvar Link</button>
+            <button type="button" onclick="closeModal()" class="btn-secondary px-8">Cancelar</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const linkOverlay = document.getElementById('linkModalOverlay');
+    const linkContainer = document.getElementById('modalContainer');
+
+    function openAddModal() {
+        document.getElementById('modal-title').innerHTML = '<i class="fas fa-link text-neon-blue"></i> ADICIONAR LINK XRAY';
+        document.getElementById('link-id').value = '';
+        document.getElementById('link-form').reset();
+        document.getElementById('link-active').checked = true;
+        showModal();
+    }
+
+    function showModal() {
+        linkOverlay.classList.replace('hidden', 'flex');
+        setTimeout(() => {
+            linkContainer.classList.replace('scale-95', 'scale-100');
+            linkContainer.classList.replace('opacity-0', 'opacity-100');
+        }, 10);
+    }
+
+    function closeModal() {
+        linkContainer.classList.replace('scale-100', 'scale-95');
+        linkContainer.classList.replace('opacity-100', 'opacity-0');
+        setTimeout(() => linkOverlay.classList.replace('flex', 'hidden'), 300);
+    }
+
+    function editLink(data) {
+        document.getElementById('modal-title').innerHTML = '<i class="fas fa-pen-to-square text-neon-blue"></i> EDITAR LINK XRAY';
+        document.getElementById('link-id').value = data.id;
+        document.getElementById('link-name').value = data.name;
+        document.getElementById('link-text').value = data.link;
+        document.getElementById('link-active').checked = data.is_active;
+        showModal();
+    }
+
+    async function deleteLink(id) {
+        if(confirm('Excluir este link permanentemente?')) {
+            const resp = await fetch(`/admin/xray/delete/${id}`, { method: 'POST' });
+            if(resp.ok) window.location.reload();
+        }
+    }
+
+    async function toggleLink(id) {
+        await fetch(`/admin/xray/toggle/${id}`, { method: 'POST' });
+    }
+
+    linkOverlay.addEventListener('click', (e) => { if(e.target === linkOverlay) closeModal(); });
+    
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !linkOverlay.classList.contains('hidden')) closeModal();
+    });
+</script>
+{% endblock %}

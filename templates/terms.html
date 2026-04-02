@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Termos de Uso | SSH INTEL</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Orbitron:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .terms-container {
+            max-width: 800px;
+            margin: 4rem auto;
+            padding: 3rem;
+            background: var(--card-bg);
+            border-radius: 24px;
+            border: 1px solid rgba(0, 210, 255, 0.1);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+        .terms-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        .terms-header h1 {
+            font-family: var(--font-tech);
+            font-size: 2rem;
+            background: linear-gradient(45deg, var(--neon-blue), var(--neon-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+        }
+        .terms-content {
+            color: var(--text-color);
+            line-height: 1.8;
+        }
+        .terms-content h2 {
+            color: var(--neon-blue);
+            font-size: 1.3rem;
+            margin: 2rem 0 1rem;
+            font-family: var(--font-tech);
+        }
+        .terms-content p {
+            margin-bottom: 1.5rem;
+            color: var(--text-muted);
+        }
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--neon-blue);
+            text-decoration: none;
+            font-weight: 600;
+            margin-bottom: 2rem;
+            transition: all 0.3s;
+        }
+        .back-btn:hover {
+            color: white;
+            transform: translateX(-5px);
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-container">
+            <a href="/" class="logo" style="text-decoration: none;">SSH INTEL</a>
+        </div>
+    </nav>
+
+    <main style="display: block; padding: 2rem;">
+        <div class="terms-container reveal">
+            <a href="/" class="back-btn"><i class="fas fa-arrow-left"></i> VOLTAR AO INÍCIO</a>
+            
+            <div class="terms-header">
+                <h1>TERMOS DE USO</h1>
+                <p style="color: var(--text-muted);">Última atualização: 02 de Abril de 2026</p>
+            </div>
+
+            <div class="terms-content">
+                {{ terms_content | safe if terms_content else 'Nenhum termo de uso definido ainda.' }}
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 SSH INTEL - Premium SSH Services</p>
+    </footer>
+</body>
+</html>
