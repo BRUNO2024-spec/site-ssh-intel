@@ -214,6 +214,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (result.success) {
                 document.getElementById('res-ip').innerText = result.credentials.ip;
+                
+                const domainElement = document.getElementById('res-domain');
+                const domainContainer = document.getElementById('domain-container');
+                if (result.credentials.domain) {
+                    domainElement.innerText = result.credentials.domain;
+                    domainContainer.style.display = 'block';
+                } else {
+                    domainContainer.style.display = 'none';
+                }
+
                 document.getElementById('res-user').innerText = result.credentials.username;
                 document.getElementById('res-pass').innerText = result.credentials.password;
                 
@@ -294,6 +304,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Copy All Functionality ---
     copyAllBtn.addEventListener('click', () => {
         const ip = document.getElementById('res-ip').innerText;
+        const domain = document.getElementById('res-domain').innerText;
         const user = document.getElementById('res-user').innerText;
         const pass = document.getElementById('res-pass').innerText;
         const uuid = document.getElementById('res-uuid').innerText;
@@ -301,9 +312,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const expiry = document.getElementById('res-expiry').innerText;
 
         let textToCopy = `🚀 SSH INTEL - ACESSO GERADO\n\n` +
-                           `🌐 IP: ${ip}\n` +
-                           `👤 Usuário: ${user}\n` +
-                           `🔑 Senha: ${pass}\n`;
+                      `📍 IP: ${ip}\n`;
+        
+        if (domain && domain !== '---' && domain !== '') {
+            textToCopy += `🌐 DOMÍNIO: ${domain}\n`;
+        }
+        
+        textToCopy += `👤 USUÁRIO: ${user}\n` +
+                      `🔑 SENHA: ${pass}\n`;
         
         if (uuid && uuid !== '00000000-0000-0000-0000-000000000000') {
             textToCopy += `🆔 UUID XRAY: ${uuid}\n`;
