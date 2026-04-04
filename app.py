@@ -46,12 +46,20 @@ def invalid_token_callback(callback):
 
 with app.app_context():
     db.create_all()
-    # Criar admin padrão se não existir
-    if not Admin.query.filter_by(username=os.getenv('ADMIN_USERNAME', 'admin')).first():
-        admin = Admin(username=os.getenv('ADMIN_USERNAME', 'admin'))
-        admin.set_password(os.getenv('ADMIN_PASSWORD', 'admin123'))
-        db.session.add(admin)
-        db.session.commit()
+    # Criar admin padrão se não existir (com tratamento para evitar erro em multi-worker)
+    from sqlalchemy.exc import IntegrityError
+    try:
+        admin_user = os.getenv('ADMIN_USERNAME', 'admin')
+        if not Admin.query.filter_by(username=admin_user).first():
+            admin = Admin(username=admin_user)
+            admin.set_password(os.getenv('ADMIN_PASSWORD', 'admin123'))
+            db.session.add(admin)
+            db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+    except Exception as e:
+        print(f"Erro ao inicializar admin: {e}")
+        db.session.rollback()
 
 # Configurações da API Externa (Legado - serão substituídas pelo DB)
 API_TOKEN = "30cee860e5c348d39c9a057c3b918d01"
