@@ -173,6 +173,15 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(updateAllCards, 10000); // Atualiza a cada 10 segundos
 
     // --- Handle Create Button Click (with Ads logic) ---
+    const adModal = document.getElementById('ad-modal');
+    const adContainer = document.getElementById('reward-ad-container');
+    const adTimer = document.getElementById('ad-timer');
+    const timerSeconds = document.getElementById('timer-seconds');
+    const cancelAdBtn = document.getElementById('cancel-ad-btn');
+
+    let adTimeout = null;
+    let adInterval = null;
+
     window.handleCreateClick = (cardId, hasAds) => {
         const card = document.querySelector(`.server-card[data-card-id="${cardId}"]`);
         const btn = card.querySelector('.create-btn');
@@ -180,20 +189,54 @@ document.addEventListener('DOMContentLoaded', () => {
         const loader = btn.querySelector('.loader');
 
         if (hasAds) {
-            // Lógica do Google Ads
-            // Aqui você deve disparar o anúncio e usar o callback de recompensa
-            // Simulando o anúncio:
-            showToast('Assista o anúncio para liberar seu acesso...', 'info');
+            // Limpa estados anteriores
+            if (adTimeout) clearTimeout(adTimeout);
+            if (adInterval) clearInterval(adInterval);
             
-            // Exemplo de como funcionaria com o Google AdSense (Simulado)
-            // googleContext.showAd({
-            //    onReward: () => createSSH(cardId, btn, btnText, loader)
-            // });
+            // Mostra o modal de anúncio
+            adModal.style.display = 'flex';
+            adTimer.style.display = 'block';
+            
+            // Pega o código do anúncio do container oculto no card
+            const cardAdSource = document.getElementById(`ads-container-${cardId}`);
+            if (cardAdSource && adContainer) {
+                adContainer.innerHTML = cardAdSource.innerHTML;
+                // Executa scripts dentro do código do anúncio se houver
+                const scripts = adContainer.querySelectorAll('script');
+                scripts.forEach(oldScript => {
+                    const newScript = document.createElement('script');
+                    Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+                    newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+                    oldScript.parentNode.replaceChild(newScript, oldScript);
+                });
+            }
 
-            // Simulando conclusão do anúncio após 3 segundos
-            setTimeout(() => {
+            // Timer de Recompensa (15 segundos)
+            let secondsLeft = 15;
+            timerSeconds.innerText = secondsLeft;
+
+            adInterval = setInterval(() => {
+                secondsLeft--;
+                timerSeconds.innerText = secondsLeft;
+                if (secondsLeft <= 0) {
+                    clearInterval(adInterval);
+                }
+            }, 1000);
+
+            adTimeout = setTimeout(() => {
+                adModal.style.display = 'none';
+                showToast('Recompensa liberada! Criando acesso...', 'success');
                 createSSH(cardId, btn, btnText, loader);
-            }, 3000);
+            }, 15000); // 15 segundos de anúncio
+
+            // Botão cancelar
+            cancelAdBtn.onclick = () => {
+                clearTimeout(adTimeout);
+                clearInterval(adInterval);
+                adModal.style.display = 'none';
+                showToast('Anúncio cancelado. Você não recebeu a recompensa.', 'error');
+            };
+
         } else {
             createSSH(cardId, btn, btnText, loader);
         }
