@@ -410,6 +410,7 @@ def criar_usuario(card_id):
                         "username": api_data.get("usuario"),
                         "password": api_data.get("senha"),
                         "uuid": api_data.get("xray_uuid"),
+                        "domain": api_data.get("dominio"),
                         "expiry": api_data.get("validade"),
                         "port": card.ports
                     }
