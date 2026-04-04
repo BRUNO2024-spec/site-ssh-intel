@@ -131,6 +131,7 @@
     </div>
 
     <!-- Modal de Sucesso (Credenciais) -->
+    <!-- Success Modal -->
     <div class="modal" id="success-modal">
         <div class="modal-content credential-modal reveal">
             <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
@@ -149,6 +150,13 @@
                         <div class="copy-box">
                             <span id="res-ip">0.0.0.0</span>
                             <button onclick="copyToClipboard('res-ip')"><i class="far fa-copy"></i></button>
+                        </div>
+                    </div>
+                    <div class="credential-item" id="domain-container">
+                        <label class="form-label">Domínio</label>
+                        <div class="copy-box">
+                            <span id="res-domain">---</span>
+                            <button onclick="copyToClipboard('res-domain')"><i class="far fa-copy"></i></button>
                         </div>
                     </div>
                     <div class="credential-item">
@@ -194,6 +202,32 @@
                     <i class="fas fa-copy"></i> COPIAR TUDO
                 </button>
                 <button class="btn-secondary" style="margin-top: 0;" onclick="closeSuccessModal()">FECHAR</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ad Modal (Reward) -->
+    <div class="modal" id="ad-modal">
+        <div class="modal-content reveal" style="max-width: 400px; text-align: center; padding: 2rem;">
+            <div class="modal-header" style="margin-bottom: 1.5rem;">
+                <h2 style="color: var(--neon-blue); font-size: 1.4rem;">
+                    <i class="fas fa-gift"></i> LIBERAR ACESSO
+                </h2>
+            </div>
+            <div class="modal-body">
+                <p style="color: var(--text-muted); margin-bottom: 2rem; font-size: 0.95rem; line-height: 1.6;">
+                    Assista o anúncio abaixo até o final para gerar suas credenciais premium gratuitamente.
+                </p>
+                <div id="reward-ad-container" style="min-height: 250px; background: rgba(255,255,255,0.05); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem; border: 1px dashed var(--border);">
+                    <!-- O anúncio será inserido aqui dinamicamente -->
+                    <span style="color: var(--text-muted); font-size: 0.8rem;">Carregando anúncio...</span>
+                </div>
+                <div id="ad-timer" style="font-size: 0.8rem; color: var(--neon-purple); font-weight: bold; margin-bottom: 1rem; display: none;">
+                    Aguarde <span id="timer-seconds">15</span> segundos...
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancel-ad-btn" class="btn-secondary" style="width: 100%;">CANCELAR</button>
             </div>
         </div>
     </div>
