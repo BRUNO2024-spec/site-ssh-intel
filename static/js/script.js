@@ -151,6 +151,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 if(createBtn && btnText) {
+                    // Se o botão estiver em cooldown, não mexemos nele
+                    if (createBtn.dataset.cooldown === 'true') return;
+
                     if (result.status === 'Offline') {
                         createBtn.disabled = true;
                         btnText.innerText = 'INDISPONÍVEL';
@@ -187,6 +190,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const btn = card.querySelector('.create-btn');
         const btnText = btn.querySelector('.btn-text');
         const loader = btn.querySelector('.loader');
+
+        if (btn.disabled || btn.dataset.cooldown === 'true') return;
 
         if (hasAds) {
             // Limpa estados anteriores
@@ -290,10 +295,37 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             showToast('Erro de conexão.', 'error');
         } finally {
-            btn.disabled = false;
-            btnText.style.display = 'block';
-            loader.style.display = 'none';
+            startCooldown(btn, btnText, loader);
         }
+    }
+
+    function startCooldown(btn, btnText, loader) {
+        loader.style.display = 'none';
+        btnText.style.display = 'block';
+        btn.disabled = true;
+        btn.dataset.cooldown = 'true';
+        
+        let timeLeft = 10;
+        const originalText = "CRIAR ACESSO PREMIUM";
+        
+        btnText.innerText = `AGUARDE ${timeLeft}s`;
+        
+        const cooldownInterval = setInterval(() => {
+            timeLeft--;
+            if (timeLeft <= 0) {
+                clearInterval(cooldownInterval);
+                btn.dataset.cooldown = 'false';
+                btnText.innerText = originalText;
+                
+                // Só reativa se o servidor não estiver offline (verificação simples)
+                const statusText = btn.closest('.server-card').querySelector('.server-status-text');
+                if (statusText && !statusText.classList.contains('offline')) {
+                    btn.disabled = false;
+                }
+            } else {
+                btnText.innerText = `AGUARDE ${timeLeft}s`;
+            }
+        }, 1000);
     }
 
     // --- Toast Notification System ---

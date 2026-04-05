@@ -76,14 +76,14 @@ with app.app_context():
         pass
 
 # Configurações da API Externa (Legado - serão substituídas pelo DB)
-API_TOKEN = "30cee860e5c348d39c9a057c3b918d01"
-API_BASE_URL_CREATE = "http://15.228.12.255:2020/v1"
-API_BASE_URL_MONITOR = "http://15.228.12.255:3030/v1"
+API_TOKEN = "64ab01fffe531cd85850ab3bdd90b0ca"
+API_BASE_URL_CREATE = "http://137.131.154.41:2020/v1"
+API_BASE_URL_MONITOR = "http://137.131.154.41:3030/v1"
 
 # Configurações do servidor (exibição no card padrão se não houver no DB)
 SERVER_CONFIG = {
     "name": "Servidor BR",
-    "ip": "15.228.12.255",
+    "ip": "137.131.154.41",
     "ports": ["80", "8080"],
     "protocols": ["WS", "WSS", "BadVPN"]
 }
@@ -116,8 +116,8 @@ def get_external_server_stats(stats_url=None, token=None):
             return {"total_usuarios_criados": 0, "total_usuarios_expirados": 0}
             
         url = stats_url.rstrip('/')
-        if not url.endswith('/api-registros'):
-            url = f"{url}/api-registros"
+        if not url.endswith('/usuarios-ssh'):
+            url = f"{url}/usuarios-ssh"
             
         auth_token = token if token else API_TOKEN
         headers = {"Authorization": f"Bearer {auth_token}"}
@@ -126,8 +126,8 @@ def get_external_server_stats(stats_url=None, token=None):
         if response.status_code == 200:
             data = response.json()
             return {
-                "total_usuarios_criados": data.get("total_usuarios_criados", 0),
-                "total_usuarios_expirados": data.get("total_usuarios_expirados", 0)
+                "total_usuarios_criados": data.get("total_usuarios", 0),
+                "total_usuarios_expirados": data.get("usuarios_exp", 0)
             }
         return {"total_usuarios_criados": 0, "total_usuarios_expirados": 0}
     except Exception as e:
@@ -409,20 +409,31 @@ def criar_usuario(card_id):
         # Fallback para o token global se o do card estiver vazio
         auth_token = card.api_token if card.api_token else API_TOKEN
         headers = {"Authorization": f"Bearer {auth_token}"}
-        url = f"{card.api_url_create.rstrip('/')}/criar-usuario"
+        
+        # Constrói a URL de forma inteligente (verifica se já termina com criar-usuario)
+        base_url = card.api_url_create.strip().rstrip('/')
+        if base_url.endswith('/criar-usuario'):
+            url = base_url
+        else:
+            url = f"{base_url}/criar-usuario"
         
         # Log para depuração (mascarando o token)
         token_preview = f"{auth_token[:4]}***{auth_token[-4:]}" if auth_token else "Nenhum"
         print(f"Chamando API: {url} | Token: {token_preview}")
         
+        # Tenta a requisição com timeout e verificação de status
         response = requests.get(url, headers=headers, timeout=20)
         
+        # Tenta decodificar o JSON primeiro para ter mais detalhes do erro se houver
+        try:
+            api_data = response.json()
+        except ValueError:
+            return jsonify({
+                "success": False, 
+                "message": f"A API externa retornou uma resposta inválida (Status: {response.status_code}). Verifique a URL configurada."
+            }), 502
+            
         if response.status_code == 200:
-            try:
-                api_data = response.json()
-            except ValueError:
-                return jsonify({"success": False, "message": "Resposta da API não é um JSON válido."}), 500
-                
             if api_data.get("status") == "success":
                 return jsonify({
                     "success": True,
@@ -438,16 +449,29 @@ def criar_usuario(card_id):
                     }
                 })
             else:
-                return jsonify({"success": False, "message": api_data.get("message", "Erro na API externa.")}), 400
+                # Erro retornado pela própria API externa (ex: limite atingido)
+                return jsonify({
+                    "success": False, 
+                    "message": api_data.get("message", "Erro na API externa.")
+                }), 400
+                
         elif response.status_code == 401:
-            return jsonify({"success": False, "message": "Token de autorização inválido (401). Verifique o token no Painel Admin."}), 401
+            return jsonify({
+                "success": False, 
+                "message": "Token de autorização inválido (401). Verifique o token no Painel Admin."
+            }), 401
         else:
-            return jsonify({"success": False, "message": f"Erro na API externa (Status: {response.status_code})"}), 500
+            # Outros erros (404, 500, etc) da API externa
+            error_msg = api_data.get("message") if isinstance(api_data, dict) else None
+            return jsonify({
+                "success": False, 
+                "message": f"Erro na API externa (Status: {response.status_code}): {error_msg or 'Falha na comunicação'}"
+            }), response.status_code if response.status_code < 600 else 500
             
     except requests.exceptions.Timeout:
         return jsonify({"success": False, "message": "A API externa demorou muito para responder (Timeout)."}), 504
     except requests.exceptions.RequestException as e:
-        return jsonify({"success": False, "message": f"Erro de conexão com a API: {str(e)}"}), 500
+        return jsonify({"success": False, "message": f"Erro de conexão com a API: {str(e)}"}), 502
     except Exception as e:
         print(f"Erro inesperado: {str(e)}")
         return jsonify({"success": False, "message": f"Erro interno: {str(e)}"}), 500
