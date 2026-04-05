@@ -79,10 +79,10 @@ Para que o site continue rodando mesmo após você fechar o terminal, usaremos o
 
    [Service]
    User=root
-   Group=www-data
-   WorkingDirectory=/var/www/site-ssh-intel
-   Environment="PATH=/var/www/site-ssh-intel/venv/bin"
-   ExecStart=/var/www/site-ssh-intel/venv/bin/gunicorn --bind 0.0.0.0:5000 app:app
+   Group=root
+   WorkingDirectory=/root/site-ssh-intel
+   Environment="PATH=/root/site-ssh-intel/venv/bin"
+   ExecStart=/root/site-ssh-intel/venv/bin/gunicorn --bind 0.0.0.0:5000 app:app
 
    [Install]
    WantedBy=multi-user.target
@@ -92,19 +92,79 @@ Para que o site continue rodando mesmo após você fechar o terminal, usaremos o
    ```bash
    sudo systemctl start ssh-intel
    sudo systemctl enable ssh-intel
+   sudo systemctl status ssh-intel
+   sudo systemctl restart ssh-intel
+   systemctl daemon-reload
    ```
 
-## 🌐 Passo 7: (Opcional) Abrir Portas no Firewall
+## 🌐 Passo 7: Configurar Nginx e HTTPS (Certbot)
 
-Se você não conseguir acessar o site, verifique se a porta 5000 está aberta:
+Para colocar seu site em produção com um domínio próprio e segurança HTTPS, siga os passos abaixo:
 
+### 1. Instalar Nginx e Certbot
 ```bash
-sudo ufw allow 5000/tcp
+sudo apt install nginx certbot python3-certbot-nginx -y
+```
+
+### 2. Configurar o Bloco de Servidor Nginx
+Crie um arquivo de configuração para o seu domínio:
+```bash
+sudo nano /etc/nginx/sites-available/ssh-intel.intelbrcloud.qzz.io
+```
+
+Cole o conteúdo abaixo (substitua `seu-dominio.com` pelo seu domínio real):
+```nginx
+server {
+    listen 80;
+    server_name ssh-intel.intelbrcloud.qzz.io www.ssh-intel.intelbrcloud.qzz.io;
+
+    location / {
+        include proxy_params;
+        proxy_pass http://localhost:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+Ative a configuração e reinicie o Nginx:
+```bash
+sudo ln -s /etc/nginx/sites-available/ssh-intel.intelbrcloud.qzz.io /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl restart nginx
+```
+
+### 3. Obter Certificado SSL Gratuito (HTTPS)
+O Certbot configurará automaticamente o HTTPS no seu Nginx:
+```bash
+sudo certbot --nginx -d ssh-intel.intelbrcloud.qzz.io -d www.ssh-intel.intelbrcloud.qzz.io
+```
+*Siga as instruções na tela e escolha a opção de "Redirect" para forçar todo o tráfego para HTTPS.*
+
+### 4. Renovação Automática do SSL
+O Certbot configura um cron job automaticamente, mas você pode testar com:
+```bash
+sudo certbot renew --dry-run
 ```
 
 ---
 
-## 📝 Notas Adicionais
-- O arquivo `app.py` está configurado para rodar em `0.0.0.0:5000`.
-- Certifique-se de que o `API_TOKEN` em `app.py` está correto.
-- Para ver os logs do serviço: `sudo journalctl -u ssh-intel`
+## 🛠️ Comandos Úteis
+
+- **Ver logs do site:** `sudo journalctl -u ssh-intel -f`
+- **Reiniciar o painel:** `sudo systemctl restart ssh-intel`
+- **Verificar status do Nginx:** `sudo systemctl status nginx`
+
+---
+
+## 💡 Dicas de Segurança
+- **Firewall (UFW):** Recomenda-se fechar a porta 5000 e permitir apenas 80 (HTTP) e 443 (HTTPS):
+  ```bash
+  sudo ufw allow 'Nginx Full'
+  sudo ufw delete allow 5000
+  sudo ufw enable
+  ```
+- **Banco de Dados:** Faça backups regulares do arquivo `ssh_intel.db`.
+- **Ambiente Virtual:** Sempre execute os comandos do Python com o ambiente ativado (`source venv/bin/activate`).

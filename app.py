@@ -46,20 +46,34 @@ def invalid_token_callback(callback):
 
 with app.app_context():
     db.create_all()
-    # Criar admin padrão se não existir (com tratamento para evitar erro em multi-worker)
+    
+    # Sincronizar administrador com as credenciais do .env (Sempre garante que o .env mande)
     from sqlalchemy.exc import IntegrityError
     try:
-        admin_user = os.getenv('ADMIN_USERNAME', 'admin')
-        if not Admin.query.filter_by(username=admin_user).first():
-            admin = Admin(username=admin_user)
-            admin.set_password(os.getenv('ADMIN_PASSWORD', 'admin123'))
+        db.session.commit() # Limpa qualquer transação pendente do create_all
+        
+        env_admin_user = os.getenv('ADMIN_USERNAME', 'admin')
+        env_admin_pass = os.getenv('ADMIN_PASSWORD', 'admin123')
+        
+        admin = Admin.query.filter_by(username=env_admin_user).first()
+        
+        if not admin:
+            # Se não existe o usuário do .env, criamos
+            print(f"[*] Criando administrador do .env: {env_admin_user}")
+            admin = Admin(username=env_admin_user)
+            admin.set_password(env_admin_pass)
             db.session.add(admin)
             db.session.commit()
+        else:
+            # Se existe, atualizamos a senha para bater com o .env (Opcional, mas resolve o problema do usuário)
+            admin.set_password(env_admin_pass)
+            db.session.commit()
+            
     except IntegrityError:
         db.session.rollback()
     except Exception as e:
-        print(f"Erro ao inicializar admin: {e}")
         db.session.rollback()
+        pass
 
 # Configurações da API Externa (Legado - serão substituídas pelo DB)
 API_TOKEN = "30cee860e5c348d39c9a057c3b918d01"
@@ -478,4 +492,4 @@ def online_status_all():
     return jsonify(results)
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5340)
+    app.run(debug=True, host="0.0.0.0", port=5000)

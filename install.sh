@@ -42,10 +42,13 @@ echo -e "\n${BLUE}[1/8] Instalando dependências do sistema...${NC}"
 apt update && apt upgrade -y
 apt install -y python3 python3-pip python3-venv nginx certbot python3-certbot-nginx git curl wget
 
-# 3. Clonar Projeto do GitHub para /var/www
+# 3. Clonar Projeto do GitHub para /root
 echo -e "\n${BLUE}[2/8] Clonando projeto do GitHub...${NC}"
-INSTALL_DIR="/var/www/site-ssh-intel"
+INSTALL_DIR="/root/site-ssh-intel"
 REPO_URL="https://github.com/BRUNO2024-spec/site-ssh-intel.git"
+
+# Adicionar exceção de diretório seguro para o Git (evita erro de ownership)
+git config --global --add safe.directory "$INSTALL_DIR"
 
 if [ -d "$INSTALL_DIR" ]; then
     echo -e "${YELLOW}Pasta destino já existe. Atualizando código...${NC}"
@@ -59,11 +62,11 @@ fi
 
 # 4. Ajustar Permissões
 echo -e "\n${BLUE}[3/8] Ajustando permissões...${NC}"
-chown -R www-data:www-data "$INSTALL_DIR"
+chown -R root:root "$INSTALL_DIR"
 chmod -R 755 "$INSTALL_DIR"
 # Garantir permissão de escrita no SQLite
 touch "$INSTALL_DIR/ssh_intel.db"
-chown www-data:www-data "$INSTALL_DIR/ssh_intel.db"
+chown root:root "$INSTALL_DIR/ssh_intel.db"
 chmod 664 "$INSTALL_DIR/ssh_intel.db"
 
 # 5. Configurar Ambiente Virtual
@@ -76,6 +79,13 @@ pip install --upgrade pip
 pip install -r requirements.txt
 pip install gunicorn
 
+# Inicializar Banco de Dados
+echo -e "\n${BLUE}[*] Inicializando banco de dados...${NC}"
+export ADMIN_USERNAME=$ADMIN_USER
+export ADMIN_PASSWORD=$ADMIN_PASS
+python3 init_db.py
+deactivate
+
 # 6. Configurar .env
 echo -e "\n${BLUE}[5/8] Gerando arquivo .env...${NC}"
 JWT_SECRET=$(python3 -c "import secrets; print(secrets.token_hex(32))")
@@ -85,7 +95,7 @@ JWT_SECRET_KEY=$JWT_SECRET
 ADMIN_USERNAME=$ADMIN_USER
 ADMIN_PASSWORD=$ADMIN_PASS
 EOF
-chown www-data:www-data .env
+chown root:root .env
 chmod 600 .env
 
 # 7. Configurar Systemd Service
@@ -97,11 +107,11 @@ Description=Gunicorn instance to serve SSH INTEL
 After=network.target
 
 [Service]
-User=www-data
-Group=www-data
+User=root
+Group=root
 WorkingDirectory=$INSTALL_DIR
 Environment="PATH=$INSTALL_DIR/venv/bin"
-ExecStart=$INSTALL_DIR/venv/bin/gunicorn --workers 3 --bind unix:ssh-intel.sock -m 007 app:app
+ExecStart=$INSTALL_DIR/venv/bin/gunicorn --bind 0.0.0.0:5000 app:app
 
 [Install]
 WantedBy=multi-user.target
@@ -118,11 +128,15 @@ NGINX_CONF="/etc/nginx/sites-available/$DOMAIN"
 cat <<EOF > $NGINX_CONF
 server {
     listen 80;
-    server_name $DOMAIN;
+    server_name $DOMAIN www.$DOMAIN;
 
     location / {
         include proxy_params;
-        proxy_pass http://unix:$INSTALL_DIR/ssh-intel.sock;
+        proxy_pass http://localhost:5000;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
     }
 }
 EOF
